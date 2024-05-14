@@ -16,7 +16,20 @@ filtre_ACM = False
 articles_uniquement = False
 ###
 requete = "(collaboration OR teamwork OR 'remote collaboration' OR 'distance collaboration') AND ((asymetr* dissimila*) AND (intera* syst*))"
+requete = "((NOT (asymetric OR asymetrical) AND collaboration) OR teamwork)"
 
+
+# class Requete:
+#     def __init__(self, terme1, separateur, terme2):
+#         self.terme1 = terme1
+#         self.separateur = separateur
+#         self.terme2 = terme2
+#     def combine(self, separateur:str, requete2)->Requete:
+#         pass
+    
+#     def __str__(self):
+#         return f"{self.terme1} {self.separateur} {self.terme2}"
+        
 
 
 ################################### FUNCTIONS ###################################
@@ -33,6 +46,9 @@ def convert_to_http_chars(string):
         string = string.replace(char, http_chars[char])
     return string
 
+def create_random_request(vocabulaire, requete):
+    separators = [' AND ', ' OR ', ' NOT ']
+    # La requête est une liste de 3 termes 
 
 
 ################################### MAIN ###################################
@@ -40,7 +56,7 @@ def convert_to_http_chars(string):
 
 
 # url construction
-http_chars = {':': '%3A', '(': '%28', ')': '%29', ' ': '+', "'": '%22'}
+http_chars = {':': '%3A', '(': '%28', ')': '%29', ' ': '+', "'": '%22', }
 base_url = f"https://dl.acm.org/action/doSearch?fillQuickSearch=false&target=advanced&expand=dl&AfterMonth={after_month}&AfterYear={after_year}&BeforeMonth={before_month}&BeforeYear={before_year}&AllField="
 requete = "Abstract:(" + requete + ")"
 all_field = convert_to_http_chars(requete)
@@ -52,7 +68,7 @@ if filtre_ACM:
 # Soup
 soup = BeautifulSoup(get_page_content(base_url+all_field), 'html.parser')
 formatted_request = soup.title.text
-nb_results = int(soup.find('span', {'class': 'hitsLength'}).text)
+nb_results = int(soup.find('span', {'class': 'hitsLength'}).text.replace(',', ''))
 # print
 print("-------------------\n")
 print(f"Request: {formatted_request}\n")
