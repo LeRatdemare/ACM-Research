@@ -13,12 +13,12 @@ class Vocabulary:
         :return: True si le vocabulaire est valide. False sinon.
         """
         for category, words in self.content.items():
-            if not isinstance(category, str) or not isinstance(words, list):
-                return False
             for word in words:
                 if not isinstance(word, str):
+                    print("Invalid type of word")
                     return False
             if category not in words:
+                print("Category not in words")
                 return False
         return True
     
@@ -44,10 +44,21 @@ class Vocabulary:
         :pre: word est un str.
         :return: La liste des mots similaires à word.
         """
+        print("word", word)
+        print("content", self.content)
         for words in self.content.values():
             if word in words:
+                print("words", words)
+                print("Type", type(words))
                 return words
-        return []
+        Exception(f"Il n'y a pas de mot similaire à '{word}' dans le vocabulaire.")
+    
+    def is_word(word: str):
+        """
+        :pre: -
+        :return: True si word ne contient pas d'espaces. False sinon.
+        """
+        return " " not in word
     
     def __len__(self):
         return self.n_words

@@ -66,11 +66,14 @@ class Node:
         :return: La représentation de l'arbre correspondant à une requête de navigateur
         """
         if self.is_leaf():
-            return self.value
+            if Vocabulary.is_word(self.value):
+                return self.value
+            else:
+                return '"' + self.value + '"'
         if self.is_operation():
             if self.value == "NOT":
                 return f"NOT {self.children[0].to_request()}"
-            return f"({self.children[0].to_request()} {self.value} {self.children[1].to_request()})"
+            return f"({self.children[1].to_request()} {self.value} {self.children[0].to_request()})"
 
     def get_random_node(self):
         """
@@ -85,34 +88,49 @@ class Node:
         """
         Modifie aléatoirement de la valeur du noeud
         :pre: -
-        :return: None 
+        :return: None
         """
         # Si le nœud est une feuille, on le remplace par une feuille aléatoire
         if self.is_leaf():
             # On choisit aléatoirement soit un synonyme
             if random.random() < KEEP_SIMILAR_WORD_PROBA:
-                self.value = random.choice(self.vocabulary.get_similar_words(self.value))
+                self.value = random.choice(list(self.vocabulary.get_similar_words(self.value)))
             # Soit un mot aléatoire
             else:
-                self.value = random.choice(self.vocabulary.get_words())
-        # Si le nœud est une opération, on a une proba d'inverser l'opération
-        if random.random() < KEEP_SAME_OPERATION_PROBA:
-            self.value = "AND" if self.value == "OR" else "OR"
+                # On choisit un mot différent du vocabulaire
+                self.value = random.choice([word for word in self.vocabulary.get_words() if word != self.value])
+        # Si le nœud est une opération, on l'inverse
+        self.value = "AND" if self.value == "OR" else "OR"
+        assert self.is_valid()
     
-    def alter_structure(self, grow_proba=0.6, shrink_proba=0.3):
+    def alter_structure(self, grow_proba=0.6):
         """
         Modifie aléatoirement la structure de l'arbre
         :pre: -
         :return: None
         """
-        # Si le nœud est une feuille, on le remplace par un nœud aléatoire qui n'est pas une feuille
-        if self.is_leaf() and random.random() < grow_proba:
+        # Si le nœud est une feuille, on le remplace par une opération
+        if self.is_leaf():
+            # Le 1er enfant est l'ancienne valeur et le second est mot aléatoire différent de la valeur
+            self.children = [Node(self.value, [], self.vocabulary), Node(random.choice([word for word in self.vocabulary.get_words() if word != self.value]), [], self.vocabulary)]
             self.value = random.choice(["AND", "OR"])
-            self.children = [Node(random.choice(self.vocabulary.get_words()), [], self.vocabulary), Node(random.choice(self.vocabulary.get_words()), [], self.vocabulary)]
-        # Si le nœud est une opération, on le remplace par une feuille aléatoire
-        elif not self.is_leaf() and random.random() < shrink_proba:
-            self.value = random.choice(self.vocabulary.get_words())
-            self.children = []
+        # Si le nœud est une opération
+        else:
+             # On a une proba qu'il grandisse
+            if random.random() < grow_proba:
+                print("Growing...")
+                self.children = [Node(self.value, self.children, self.vocabulary), Node(random.choice([word for word in self.vocabulary.get_words() if word != self.value]), [], self.vocabulary)]
+                self.value = random.choice(["AND", "OR"])
+            
+            # On a une proba qu'il rétrécisse
+            else:
+                print("Shrinking...")
+                child_to_keep = self.children[0]
+                print("Child to keep:", child_to_keep)
+                self.children = child_to_keep.children
+                self.value = child_to_keep.value
+        assert self.is_valid()
+            
 
     def __repr__(self):
         """ Donne une représentation textuelle et visuelle de l'arbre, pour le debugging """
@@ -126,7 +144,8 @@ class Node:
 
     def __str__(self):
         """ Donne une représentation textuelle et visuelle de l'arbre, pour le debugging """
-        return repr(self)
+        # return repr(self)
+        return self.to_request()
 
     def __eq__(self, other):
         """
@@ -194,7 +213,7 @@ def unserialize(serialized_repr, vocabulary: Vocabulary) -> Node:
 
 
 INCLUDED_VOCABULARY = {"asymetric":{"asym*","asymetric","asymetrical","mixed"},"collaboration":{"collaboration","teamwork","remote collaboration","distance collaboration"}, "interaction":{"intera*","interaction","interact","interactivity","interactiveness","interactive","interactiveness"}, "system":{"syst*","system","systems","systematic","systemic"}}
-EXCLUDED_VOCABULARY = {"batman":"batman"}
+EXCLUDED_VOCABULARY = {"batman":{"batman"}}
 VOCABULAIRE = INCLUDED_VOCABULARY
 VOCABULAIRE.update(EXCLUDED_VOCABULARY)
 # print(VOCABULAIRE)
@@ -212,12 +231,27 @@ VOCABULAIRE.update(EXCLUDED_VOCABULARY)
 # print("\n"+treeA.to_request()+"\n")
 
 # # Test avec une autre requête différente
-# treeB = "OR,2,AND,2,NOT,1,OR,2,asymetric,0,asymetrical,0,collaboration,0,teamwork,0"
-# print("\n"+str(unserialize(treeB))+"\n")
+# (collaboration OR teamwork OR "remote collaboration" OR "distance collaboration") AND (asymmetric OR dissimilar OR differential) AND (interaction OR system)
+treeB = "OR,2,AND,2,NOT,1,OR,2,asymetric,0,asymetrical,0,collaboration,0,teamwork,0"
+treeB = "AND,2,AND,2,OR,2,collab*,0,teamwork,0,AND,2,remote collaboration,0,distance collaboration,0,AND,2,OR,2,asymmetric,0,dissimilar,0,AND,2,differential,0,OR,2,interaction,0,system,0"
+print("\nRequête : "+unserialize(treeB, Vocabulary(INCLUDED_VOCABULARY)).to_request())
+print("\n"+repr(unserialize(treeB, Vocabulary(INCLUDED_VOCABULARY)))+"\n")
 # print(treeB)
 # # print(serialize(unserialize(treeB)) == treeB)
-# print("\n"+unserialize(treeB).to_request()+"\n")
+
 
 serialized_tree = "AND,2,NOT,1,batman,0,collaboration,0"
-tree = unserialize(serialized_tree, Vocabulary(INCLUDED_VOCABULARY))
-print(tree)
+tree = unserialize(serialized_tree, Vocabulary(INCLUDED_VOCABULARY)) # Problème car les 2 enfants auront le même vocabulaire
+
+# for i in range(10):
+#     print(f"\nRequête {i} :")
+#     print(tree)
+#     if random.random() < 0.5:
+#         print("Altering value...")
+#         tree.alter_value()
+#     else:
+#         print("Altering structure...")
+#         tree.alter_structure()
+
+# print("\nRequête :", tree)
+# print(repr(tree))

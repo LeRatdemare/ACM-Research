@@ -11,12 +11,10 @@ after_month = 1
 after_year = 2000
 before_month = 5
 before_year = 2024
+requete = '(collaboration OR teamwork OR "remote collaboration" OR "distance collaboration") AND (asymmetric OR dissimilar OR differential) AND (interaction OR system)'
 ### Attention, la combinaison de ces deux filtres peut fausser les résultats
 filtre_ACM = False
 articles_uniquement = False
-###
-requete = "(collaboration OR teamwork OR 'remote collaboration' OR 'distance collaboration') AND ((asymetr* dissimila*) AND (intera* syst*))"
-requete = "((NOT (asymetric OR asymetrical) AND collaboration) OR teamwork)"
 
 
 # class Requete:
