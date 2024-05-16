@@ -234,8 +234,8 @@ VOCABULAIRE.update(EXCLUDED_VOCABULARY)
 # (collaboration OR teamwork OR "remote collaboration" OR "distance collaboration") AND (asymmetric OR dissimilar OR differential) AND (interaction OR system)
 treeB = "OR,2,AND,2,NOT,1,OR,2,asymetric,0,asymetrical,0,collaboration,0,teamwork,0"
 treeB = "AND,2,AND,2,OR,2,collab*,0,teamwork,0,AND,2,remote collaboration,0,distance collaboration,0,AND,2,OR,2,asymmetric,0,dissimilar,0,AND,2,differential,0,OR,2,interaction,0,system,0"
-print("\nRequête : "+unserialize(treeB, Vocabulary(INCLUDED_VOCABULARY)).to_request())
-print("\n"+repr(unserialize(treeB, Vocabulary(INCLUDED_VOCABULARY)))+"\n")
+# print("\nRequête : "+unserialize(treeB, Vocabulary(INCLUDED_VOCABULARY)).to_request())
+# print("\n"+repr(unserialize(treeB, Vocabulary(INCLUDED_VOCABULARY)))+"\n")
 # print(treeB)
 # # print(serialize(unserialize(treeB)) == treeB)
 
@@ -243,15 +243,15 @@ print("\n"+repr(unserialize(treeB, Vocabulary(INCLUDED_VOCABULARY)))+"\n")
 serialized_tree = "AND,2,NOT,1,batman,0,collaboration,0"
 tree = unserialize(serialized_tree, Vocabulary(INCLUDED_VOCABULARY)) # Problème car les 2 enfants auront le même vocabulaire
 
-# for i in range(10):
-#     print(f"\nRequête {i} :")
-#     print(tree)
-#     if random.random() < 0.5:
-#         print("Altering value...")
-#         tree.alter_value()
-#     else:
-#         print("Altering structure...")
-#         tree.alter_structure()
+for i in range(10):
+    print(f"\nRequête {i} :")
+    print(tree)
+    if random.random() < 0.5:
+        print("Altering value...")
+        tree.alter_value()
+    else:
+        print("Altering structure...")
+        tree.alter_structure()
 
 # print("\nRequête :", tree)
 # print(repr(tree))
