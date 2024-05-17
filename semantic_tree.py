@@ -107,7 +107,7 @@ class Node:
             self.value = "AND" if self.value == "OR" else "OR"
         assert self.is_valid()
     
-    def alter_structure(self, grow_proba=GROW_PROBA):
+    def alter_structure(self, grow_proba=GROW_PROBA, log=False):
         """
         Modifie aléatoirement la structure de l'arbre
         :pre: -
@@ -118,20 +118,23 @@ class Node:
             # Le 1er enfant est l'ancienne valeur et le second est mot aléatoire différent de la valeur
             self.children = [Node(self.value, [], self.vocabulary), Node(random.choice([word for word in self.vocabulary.get_words() if word != self.value]), [], self.vocabulary)]
             self.value = random.choice(["AND", "OR"])
-            print("Growing...")
+            if log:
+                print("Growing...")
         # Si le nœud est une opération
         else:
              # On a une proba qu'il grandisse
             if random.random() < grow_proba:
-                print("Growing...")
+                if log:
+                    print("Growing...")
                 self.children = [Node(self.value, self.children, self.vocabulary), Node(random.choice([word for word in self.vocabulary.get_words() if word != self.value]), [], self.vocabulary)]
                 self.value = random.choice(["AND", "OR"])
             
             # On a une proba qu'il rétrécisse
             else:
-                print("Shrinking...")
                 child_to_keep = random.choice(self.children)
-                print("Child to keep:", child_to_keep)
+                if log:
+                    print("Shrinking...")
+                    print("Child to keep:", child_to_keep)
                 self.children = child_to_keep.children
                 self.value = child_to_keep.value
         assert self.is_valid()
@@ -162,7 +165,7 @@ class Node:
         if log:
             print(f"Altering node [{node}]...")
         if random.random() < structure_proba:
-            node.alter_structure()
+            node.alter_structure(log=log)
             if log:
                 print(f"Altered structure...")
         else:
@@ -224,7 +227,7 @@ class RequestTree(Node):
                 print(f"Altered value...")
         # Sinon, on autorise la modification de la valeur ou de la structure
         elif random.random() < structure_proba:
-            node.alter_structure()
+            node.alter_structure(log=log)
             if log:
                 print(f"Altered structure...")
         else:
@@ -237,7 +240,7 @@ class RequestTree(Node):
         Renvoie la requête correspondant à l'arbre.
         Affiche la partie "NOT" en rouge et la partie "AND" en vert.
         """
-        return Fore.GREEN + self.children[0].to_request() + Fore.RESET + " " + Fore.RED + self.children[1].to_request() + Fore.RESET
+        return Fore.GREEN + self.children[0].to_request() + Fore.BLUE + f" {self.value} " + Fore.RED + self.children[1].to_request() + Fore.RESET
 
     def apply_alterations(self, nb_alterations=100, log=False):
         for i in range(nb_alterations):
@@ -250,10 +253,6 @@ class RequestTree(Node):
                 print("Tree after alteration:",end="")
                 print(f"{self}")
                 print("------------------------------"+Fore.YELLOW+f"Requête {i}"+Fore.RESET+"------------------------------")
-        if log:
-            print(f"Request after {nb_alterations} alterations:\n{self.to_request()}")
-            print(f"Colored version:\n{self.to_colored_request()}")
-            print(f"{repr(self)}")
 
 #################################### FUNCTIONS ####################################
 
@@ -313,17 +312,9 @@ def unserialize(serialized_repr, vocabulary: Vocabulary) -> Node:
 initial_include_tree = Node("collaboration", [], INCLUDED_VOCABULARY)
 initial_exclude_tree = Node("batman", [], EXCLUDED_VOCABULARY)
 request_tree = RequestTree(initial_include_tree, initial_exclude_tree)
-request_tree.apply_alterations(50, log=True)
+nb_alterations = 50
+request_tree.apply_alterations(nb_alterations, log=False)
 
-# for i in range(100):
-#     print("\n\n------------------------------"+Fore.YELLOW+f"Requête {i}"+Fore.RESET+"------------------------------")
-#     print("Tree before alteration:",end="")
-#     print(f"{request_tree}")
-#     request_tree.alter_random_node(log=True)
-#     print("Tree after alteration:",end="")
-#     print(f"{request_tree}")
-#     print("------------------------------"+Fore.YELLOW+f"Requête {i}"+Fore.RESET+"------------------------------")
-
-# print(f"Request tree:\n{request_tree.to_request()}")
-# print(f"Colored request tree:\n{request_tree.to_colored_request()}")
-# print(f"{repr(request_tree)}")
+print(Fore.YELLOW+f"Request after {nb_alterations} alterations:"+Fore.RESET)
+print(request_tree.to_colored_request())
+print(repr(request_tree))
