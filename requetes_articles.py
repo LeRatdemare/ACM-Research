@@ -13,8 +13,8 @@ after_month = 1
 after_year = 2000
 before_month = datetime.datetime.now().month
 before_year = datetime.datetime.now().year
-requete = '(collaboration OR teamwork OR "remote collaboration" OR "distance collaboration") AND (asymmetric OR dissimilar OR differential)'
-nb_max_results = 10
+requete = '((((teamwork AND interactive) AND "remote collaboration") OR (("remote collaboration" AND asymetrical) AND (mixed AND teamwork))) AND NOT ((batman OR (batman AND iron-man)) AND (super-hero OR iron-man)))'
+nb_max_results_to_display = 5 # Plus ce nombre est grand, plus la requête sera longue à s'exécuter
 ### Attention, la combinaison de ces deux filtres peut fausser les résultats
 sponsorise_ACM = False
 articles_uniquement = False
@@ -116,7 +116,7 @@ def display_general_infos(general_infos: dict):
 
 # url construction
 http_chars = {':': '%3A', '(': '%28', ')': '%29', ' ': '+', "'": '%22', }
-url = construct_ACM_url(requete, nb_max_results, after_month, after_year, before_month, before_year, sponsorise_ACM, articles_uniquement, http_chars)
+url = construct_ACM_url(requete, nb_max_results_to_display, after_month, after_year, before_month, before_year, sponsorise_ACM, articles_uniquement, http_chars)
 print(requete)
 print(url)
 

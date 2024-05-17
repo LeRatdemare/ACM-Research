@@ -10,6 +10,7 @@ from colorama import Fore
 
 KEEP_SIMILAR_WORD_PROBA = 0.7
 ALTER_STRUCTURE_PROBA = 0.5
+GROW_PROBA = 0.2
 
 
 
@@ -96,7 +97,7 @@ class Node:
             self.value = "AND" if self.value == "OR" else "OR"
         assert self.is_valid()
     
-    def alter_structure(self, grow_proba=0.6):
+    def alter_structure(self, grow_proba=GROW_PROBA):
         """
         Modifie aléatoirement la structure de l'arbre
         :pre: -
@@ -141,7 +142,7 @@ class Node:
             return self
         return random.choice(self.get_all_nodes())
 
-    def alter_random_node(self, structure_proba=0.5, log=False):
+    def alter_random_node(self, structure_proba=ALTER_STRUCTURE_PROBA, log=False):
         """
         Modifie aléatoirement un nœud de l'arbre
         :pre: -
@@ -254,12 +255,12 @@ VOCABULAIRE.update(EXCLUDED_VOCABULARY)
 included_tree = Node("collaboration", [], Vocabulary(INCLUDED_VOCABULARY))
 excluded_tree = Node("batman", [], Vocabulary(EXCLUDED_VOCABULARY))
 
-for i in range(10):
+for i in range(100):
     print(Fore.YELLOW+f"\n\nRequête {i} :"+Fore.RESET)
     print("------------------------------ INCLUDED ------------------------------")
     print("Tree before alteration:",end="")
     print(Fore.GREEN + f"{included_tree}" + Fore.RESET)
-    included_tree.alter_random_node(structure_proba=ALTER_STRUCTURE_PROBA, log=True)
+    included_tree.alter_random_node(log=True)
     print("Tree after alteration:",end="")
     print(Fore.GREEN + f"{included_tree}" + Fore.RESET)
     print("//////////////////////////////////////////////////////////////////////")
@@ -267,11 +268,15 @@ for i in range(10):
     print("\n------------------------------ EXCLUDED ------------------------------")
     print("Tree before alteration:",end="")
     print(Fore.RED + f"{excluded_tree}" + Fore.RESET)
-    excluded_tree.alter_random_node(structure_proba=ALTER_STRUCTURE_PROBA, log=True)
+    excluded_tree.alter_random_node(log=True)
     print("Tree after alteration:",end="")
     print(Fore.RED + f"{excluded_tree}" + Fore.RESET)
     print("//////////////////////////////////////////////////////////////////////")
 
+
+full_tree = Node("AND", [Node("NOT", [excluded_tree], Vocabulary(VOCABULAIRE)), included_tree], Vocabulary(VOCABULAIRE))
+print("Full tree:",end="")
+print(Fore.BLUE + f"{full_tree}" + Fore.RESET)
 
 # print("\nRequête :", tree)
 # print(repr(tree))
