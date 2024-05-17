@@ -13,7 +13,7 @@ after_month = 1
 after_year = 2000
 before_month = datetime.datetime.now().month
 before_year = datetime.datetime.now().year
-requete = '((((teamwork AND interactive) AND "remote collaboration") OR (("remote collaboration" AND asymetrical) AND (mixed AND teamwork))) AND NOT ((batman OR (batman AND iron-man)) AND (super-hero OR iron-man)))'
+requete = '((systematic AND systems) OR interactive) NOT (batman AND super-hero)'
 nb_max_results_to_display = 5 # Plus ce nombre est grand, plus la requête sera longue à s'exécuter
 ### Attention, la combinaison de ces deux filtres peut fausser les résultats
 sponsorise_ACM = False

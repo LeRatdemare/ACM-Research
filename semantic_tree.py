@@ -8,6 +8,16 @@ from colorama import Fore
 
 
 
+### VOCABULARY ###
+INCLUDED_VOCABULARY = {"asymetric":{"asym*","asymetric","asymetrical","mixed"},"collaboration":{"collaboration","teamwork","remote collaboration","distance collaboration"}, "interaction":{"intera*","interaction","interact","interactivity","interactiveness","interactive","interactiveness"}, "system":{"syst*","system","systems","systematic","systemic"}}
+EXCLUDED_VOCABULARY = {"super-hero":{"super-hero","batman","iron-man"}}
+# Replace dictionaries with Vocabulary objects
+INCLUDED_VOCABULARY = Vocabulary(INCLUDED_VOCABULARY)
+EXCLUDED_VOCABULARY = Vocabulary(EXCLUDED_VOCABULARY)
+# Merge dictionaries into one
+VOCABULARY = INCLUDED_VOCABULARY + EXCLUDED_VOCABULARY
+
+### PROBABILITIES ###
 KEEP_SIMILAR_WORD_PROBA = 0.7
 ALTER_STRUCTURE_PROBA = 0.5
 GROW_PROBA = 0.2
@@ -75,7 +85,7 @@ class Node:
         if self.is_operation():
             if self.value == "NOT":
                 return f"NOT {self.children[0].to_request()}"
-            return f"({self.children[1].to_request()} {self.value} {self.children[0].to_request()})"
+            return f"({self.children[0].to_request()} {self.value} {self.children[1].to_request()})"
     
     def alter_value(self):
         """
@@ -183,7 +193,67 @@ class Node:
             return False
         return self.value == other.value and self.children == other.children
 
+class RequestTree(Node):
+    """
+    Arbre dont l'opération est un AND et qui ne contient qu'un seul
+    "NOT" à la racine du 2ème enfant.
+    """
+    def __init__(self, initial_included_node:Node, initial_excluded_node:Node):
+        super().__init__("AND", [initial_included_node, Node("NOT", [initial_excluded_node], initial_excluded_node.vocabulary)], initial_included_node.vocabulary + initial_excluded_node.vocabulary)
+        # Remarque : Le vocabulaire est de cet arbre n'a pas vraiment d'intérêt
+    
+    def alter_random_node(self, structure_proba=ALTER_STRUCTURE_PROBA, log=False):
+        """
+        Modifie aléatoirement un nœud de l'arbre en évitant de modifier le NOT
+        et sans changer la structure de l'arbre. C'est-à-dire que l'on veut garder
+        les 2 moitiés bien séparées avec chacune son vocabulaire. Il est cependant
+        possible de modifier la valeur de la racine de l'arbre.
+        :pre: -
+        :return: None
+        """
+        # Sélection d'un nœud aléatoire
+        node = self.get_random_node()
+        while node.value == "NOT": # On évite de modifier le NOT
+            node = self.get_random_node()
+        if log:
+            print(f"Altering node [{node}]...")
+        # Si le nœud est la racine, on n'autorise que le changement de valeur
+        if node==self:
+            node.alter_value()
+            if log:
+                print(f"Altered value...")
+        # Sinon, on autorise la modification de la valeur ou de la structure
+        elif random.random() < structure_proba:
+            node.alter_structure()
+            if log:
+                print(f"Altered structure...")
+        else:
+            node.alter_value()
+            if log:
+                print(f"Altered value...")
 
+    def to_colored_request(self):
+        """
+        Renvoie la requête correspondant à l'arbre.
+        Affiche la partie "NOT" en rouge et la partie "AND" en vert.
+        """
+        return Fore.GREEN + self.children[0].to_request() + Fore.RESET + " " + Fore.RED + self.children[1].to_request() + Fore.RESET
+
+    def apply_alterations(self, nb_alterations=100, log=False):
+        for i in range(nb_alterations):
+            if log:
+                print("\n\n------------------------------"+Fore.YELLOW+f"Requête {i}"+Fore.RESET+"------------------------------")
+                print("Tree before alteration:",end="")
+                print(f"{self}")
+            self.alter_random_node(log=log)
+            if log:
+                print("Tree after alteration:",end="")
+                print(f"{self}")
+                print("------------------------------"+Fore.YELLOW+f"Requête {i}"+Fore.RESET+"------------------------------")
+        if log:
+            print(f"Request after {nb_alterations} alterations:\n{self.to_request()}")
+            print(f"Colored version:\n{self.to_colored_request()}")
+            print(f"{repr(self)}")
 
 #################################### FUNCTIONS ####################################
 
@@ -236,47 +306,24 @@ def unserialize(serialized_repr, vocabulary: Vocabulary) -> Node:
 
 
 
-#################################### VARIABLES ####################################
-
-
-
-INCLUDED_VOCABULARY = {"asymetric":{"asym*","asymetric","asymetrical","mixed"},"collaboration":{"collaboration","teamwork","remote collaboration","distance collaboration"}, "interaction":{"intera*","interaction","interact","interactivity","interactiveness","interactive","interactiveness"}, "system":{"syst*","system","systems","systematic","systemic"}}
-EXCLUDED_VOCABULARY = {"super-hero":{"super-hero","batman","iron-man"}}
-VOCABULAIRE = dict(INCLUDED_VOCABULARY)
-VOCABULAIRE.update(EXCLUDED_VOCABULARY)
-# print(VOCABULAIRE)
-
-
-
 #################################### TESTS ####################################
 
 
 
-included_tree = Node("collaboration", [], Vocabulary(INCLUDED_VOCABULARY))
-excluded_tree = Node("batman", [], Vocabulary(EXCLUDED_VOCABULARY))
+initial_include_tree = Node("collaboration", [], INCLUDED_VOCABULARY)
+initial_exclude_tree = Node("batman", [], EXCLUDED_VOCABULARY)
+request_tree = RequestTree(initial_include_tree, initial_exclude_tree)
+request_tree.apply_alterations(50, log=True)
 
-for i in range(100):
-    print(Fore.YELLOW+f"\n\nRequête {i} :"+Fore.RESET)
-    print("------------------------------ INCLUDED ------------------------------")
-    print("Tree before alteration:",end="")
-    print(Fore.GREEN + f"{included_tree}" + Fore.RESET)
-    included_tree.alter_random_node(log=True)
-    print("Tree after alteration:",end="")
-    print(Fore.GREEN + f"{included_tree}" + Fore.RESET)
-    print("//////////////////////////////////////////////////////////////////////")
+# for i in range(100):
+#     print("\n\n------------------------------"+Fore.YELLOW+f"Requête {i}"+Fore.RESET+"------------------------------")
+#     print("Tree before alteration:",end="")
+#     print(f"{request_tree}")
+#     request_tree.alter_random_node(log=True)
+#     print("Tree after alteration:",end="")
+#     print(f"{request_tree}")
+#     print("------------------------------"+Fore.YELLOW+f"Requête {i}"+Fore.RESET+"------------------------------")
 
-    print("\n------------------------------ EXCLUDED ------------------------------")
-    print("Tree before alteration:",end="")
-    print(Fore.RED + f"{excluded_tree}" + Fore.RESET)
-    excluded_tree.alter_random_node(log=True)
-    print("Tree after alteration:",end="")
-    print(Fore.RED + f"{excluded_tree}" + Fore.RESET)
-    print("//////////////////////////////////////////////////////////////////////")
-
-
-full_tree = Node("AND", [Node("NOT", [excluded_tree], Vocabulary(VOCABULAIRE)), included_tree], Vocabulary(VOCABULAIRE))
-print("Full tree:",end="")
-print(Fore.BLUE + f"{full_tree}" + Fore.RESET)
-
-# print("\nRequête :", tree)
-# print(repr(tree))
+# print(f"Request tree:\n{request_tree.to_request()}")
+# print(f"Colored request tree:\n{request_tree.to_colored_request()}")
+# print(f"{repr(request_tree)}")

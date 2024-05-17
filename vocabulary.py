@@ -64,3 +64,12 @@ class Vocabulary:
     
     def __len__(self):
         return self.n_words
+    
+    def __add__(self, other):
+        """
+        :pre: other est un objet Vocabulary.
+        :return: Un nouvel objet Vocabulary contenant la fusion des deux vocabulaires.
+        """
+        new_content = dict(self.content)
+        new_content.update(other.content)
+        return Vocabulary(new_content)
