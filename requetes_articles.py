@@ -2,6 +2,7 @@ import requests
 from bs4 import BeautifulSoup
 import datetime
 import time
+import semantic_tree as st
 
 
 
@@ -18,7 +19,7 @@ nb_max_results_to_display = 5 # Plus ce nombre est grand, plus la requête sera 
 ### Attention, la combinaison de ces deux filtres peut fausser les résultats
 sponsorise_ACM = False
 articles_uniquement = False
-        
+
 
 
 ################################### FUNCTIONS ###################################

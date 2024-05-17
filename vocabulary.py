@@ -1,3 +1,5 @@
+import json
+
 class Vocabulary:
     def __init__(self, content: dict[str, list[str]]={}):
         """
@@ -62,6 +64,16 @@ class Vocabulary:
         """
         return " " not in word
     
+    def save(self, path: str):
+        """
+        :pre: path est un str.
+        :return: -
+        """
+        with open(path, 'w') as file:
+            # Convert sets to lists
+            # content_as_lists = {k: list(v) for k, v in self.content.items()}
+            json.dump(self.content, file)
+            
     def __len__(self):
         return self.n_words
     
@@ -73,3 +85,14 @@ class Vocabulary:
         new_content = dict(self.content)
         new_content.update(other.content)
         return Vocabulary(new_content)
+    
+    ### STATIC METHODS ###
+
+    def load(path: str):
+        """
+        :pre: path est un str.
+        :return: Un objet Vocabulary à partir du fichier path.
+        """
+        with open(path, 'r') as file:
+            content = json.load(file)
+        return Vocabulary(content)

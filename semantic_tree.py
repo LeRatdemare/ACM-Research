@@ -9,18 +9,15 @@ from colorama import Fore
 
 
 ### VOCABULARY ###
-INCLUDED_VOCABULARY = {"asymetric":{"asym*","asymetric","asymetrical","mixed"},"collaboration":{"collaboration","teamwork","remote collaboration","distance collaboration"}, "interaction":{"intera*","interaction","interact","interactivity","interactiveness","interactive","interactiveness"}, "system":{"syst*","system","systems","systematic","systemic"}}
-EXCLUDED_VOCABULARY = {"super-hero":{"super-hero","batman","iron-man"}}
-# Replace dictionaries with Vocabulary objects
-INCLUDED_VOCABULARY = Vocabulary(INCLUDED_VOCABULARY)
-EXCLUDED_VOCABULARY = Vocabulary(EXCLUDED_VOCABULARY)
+INCLUDED_VOCABULARY:Vocabulary = Vocabulary.load("data/included_vocabulary.json")
+EXCLUDED_VOCABULARY:Vocabulary = Vocabulary.load("data/excluded_vocabulary.json")
 # Merge dictionaries into one
 VOCABULARY = INCLUDED_VOCABULARY + EXCLUDED_VOCABULARY
 
 ### PROBABILITIES ###
 KEEP_SIMILAR_WORD_PROBA = 0.7
 ALTER_STRUCTURE_PROBA = 0.5
-GROW_PROBA = 0.2
+GROW_PROBA = 0.5
 
 
 
@@ -169,7 +166,7 @@ class Node:
             if log:
                 print(f"Altered structure...")
         else:
-            node.get_random_node().alter_value()
+            node.alter_value()
             if log:
                 print(f"Altered value...")
 
@@ -254,6 +251,8 @@ class RequestTree(Node):
                 print(f"{self}")
                 print("------------------------------"+Fore.YELLOW+f"Requête {i}"+Fore.RESET+"------------------------------")
 
+
+
 #################################### FUNCTIONS ####################################
 
 
@@ -312,9 +311,14 @@ def unserialize(serialized_repr, vocabulary: Vocabulary) -> Node:
 initial_include_tree = Node("collaboration", [], INCLUDED_VOCABULARY)
 initial_exclude_tree = Node("batman", [], EXCLUDED_VOCABULARY)
 request_tree = RequestTree(initial_include_tree, initial_exclude_tree)
-nb_alterations = 50
+
+print(Fore.YELLOW+"\nInitial request:"+Fore.RESET)
+print(request_tree.to_colored_request())
+print(repr(request_tree))
+
+nb_alterations = int(input("\nChoose the number of alterations to apply to the request: "))
 request_tree.apply_alterations(nb_alterations, log=False)
 
-print(Fore.YELLOW+f"Request after {nb_alterations} alterations:"+Fore.RESET)
+print(Fore.YELLOW+f"\nRequest after {nb_alterations} alterations:"+Fore.RESET)
 print(request_tree.to_colored_request())
 print(repr(request_tree))

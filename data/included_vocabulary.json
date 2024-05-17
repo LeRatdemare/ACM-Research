@@ -1,0 +1,19 @@
+{
+  "asymetric": ["asym*", "asymetric", "asymetrical", "mixed"],
+  "collaboration": [
+    "collaboration",
+    "teamwork",
+    "remote collaboration",
+    "distance collaboration"
+  ],
+  "interaction": [
+    "intera*",
+    "interaction",
+    "interact",
+    "interactivity",
+    "interactiveness",
+    "interactive",
+    "interactiveness"
+  ],
+  "system": ["syst*", "system", "systems", "systematic", "systemic"]
+}
