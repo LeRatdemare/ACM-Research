@@ -39,17 +39,19 @@ class Vocabulary:
                 return category
         return None
     
-    def get_similar_words(self, word:str)->list[str]:
+    def get_similar_words(self, word:str, log=False)->list[str]:
         """
         :pre: word est un str.
         :return: La liste des mots similaires à word.
         """
-        print("word", word)
-        print("content", self.content)
+        if log:
+            print("word", word)
+            print("content", self.content)
         for words in self.content.values():
             if word in words:
-                print("words", words)
-                print("Type", type(words))
+                if log:
+                    print("words", words)
+                    print("Type", type(words))
                 return words
         Exception(f"Il n'y a pas de mot similaire à '{word}' dans le vocabulaire.")
     

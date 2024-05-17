@@ -14,22 +14,10 @@ after_year = 2000
 before_month = datetime.datetime.now().month
 before_year = datetime.datetime.now().year
 requete = '(collaboration OR teamwork OR "remote collaboration" OR "distance collaboration") AND (asymmetric OR dissimilar OR differential)'
-nb_max_results = 10000
+nb_max_results = 10
 ### Attention, la combinaison de ces deux filtres peut fausser les résultats
 sponsorise_ACM = False
 articles_uniquement = False
-
-
-# class Requete:
-#     def __init__(self, terme1, separateur, terme2):
-#         self.terme1 = terme1
-#         self.separateur = separateur
-#         self.terme2 = terme2
-#     def combine(self, separateur:str, requete2)->Requete:
-#         pass
-    
-#     def __str__(self):
-#         return f"{self.terme1} {self.separateur} {self.terme2}"
         
 
 
@@ -51,11 +39,75 @@ def get_page_content(url):
     page_content = response.text
     return page_content
 
-def convert_to_http_chars(string):
+def replace_http_chars(string: str, http_chars: dict[str, str]):
+    """
+    Remplace les caractères spéciaux d'une string par leur équivalent en URL.
+
+    :pre: http_chars est un dictionnaire de la forme {':': '%3A', '(': '%28', ')': '%29', ' ': '+', "'": '%22', }
+    :return: la string avec les caractères spéciaux remplacés
+    """
     for char in http_chars:
         string = string.replace(char, http_chars[char])
     return string
 
+def construct_ACM_url(requete: str, nb_max_results=10, after_month=1, after_year=2000, before_month=datetime.datetime.now().month, before_year=datetime.datetime.now().year, sponsorise_ACM=False, articles_uniquement=False, http_chars: dict[str, str]={}):
+    """ 
+    Construit l'url pour faire une requête sur ACM à partir d'une requête ne contenant que les opérateurs AND, OR et NOT.
+    
+    :pre: requete est une string de la forme "(collaboration OR teamwork) AND (asym* or dissimilar) AND NOT (batman)"
+    :return: l'url de la requête get tel qu'il aurait été généré par ACM DL
+    """
+    base_url = f"https://dl.acm.org/action/doSearch?pageSize={nb_max_results}&fillQuickSearch=false&target=advanced&expand=dl&AfterMonth={after_month}&AfterYear={after_year}&BeforeMonth={before_month}&BeforeYear={before_year}"
+    requete = "Abstract:(" + requete + ")"
+    all_field = "&AllField="+replace_http_chars(requete, http_chars)
+    if articles_uniquement:
+        base_url += "&ContentItemType=research-article"
+    if sponsorise_ACM:
+        base_url += "&startPage=&SponsorAcronymRaw=acm"
+    return base_url + all_field
+
+### Récupération des infos avec BeautifulSoup4
+
+def get_general_infos(soup: BeautifulSoup):
+    """
+    Récupère les informations générales sur la requête
+    :pre: soup est l'objet contentant le contenu de la page
+    :return: formatted_request, nb_results (-1 si non trouvé)
+    """
+    general_infos = {}
+    # Requête au format ACM
+    general_infos['formatted_request'] = soup.title.text
+    # Nombre de résultats
+    nb_results = soup.find('span', {'class': 'hitsLength'})
+    if nb_results is None:
+        nb_results = -1
+    else:
+        nb_results = int(nb_results.text.replace(',', ''))
+    general_infos['nb_results'] = nb_results
+    # Articles
+    articles_lis = soup.find_all('li', {'class': 'search__item issue-item-container'})
+    articles = []
+    for article_li in articles_lis:
+        article = {}
+        try:
+            article['title'] = 'https://dl.acm.org'+article_li.find('span', {'class': 'hlFld-Title'}).a['href']
+        except:
+            article['title'] = 'No title'
+        try:
+            article['author1'] = article_li.find('span', {'class': 'hlFld-ContribAuthor'}).a.span.text
+        except:
+            article['author1'] = 'No author'
+        articles.append(article)
+    general_infos['articles'] = articles
+
+    return general_infos
+
+def display_general_infos(general_infos: dict):
+    for article in general_infos['articles']:
+        print(f"{article['title']} ===> {article['author1']}")
+    print("\n"+general_infos['formatted_request'])
+    print(f"Nombre total de résultats: {general_infos['nb_results']}" if general_infos['nb_results'] != -1 else "Nombre de résultats indisponible")
+    print(f"Nombre d'articles affichés: {len(general_infos['articles'])}")
 
 
 ################################### MAIN ###################################
@@ -64,55 +116,17 @@ def convert_to_http_chars(string):
 
 # url construction
 http_chars = {':': '%3A', '(': '%28', ')': '%29', ' ': '+', "'": '%22', }
-base_url = f"https://dl.acm.org/action/doSearch?pageSize={nb_max_results}&fillQuickSearch=false&target=advanced&expand=dl&AfterMonth={after_month}&AfterYear={after_year}&BeforeMonth={before_month}&BeforeYear={before_year}&AllField="
-requete = "Abstract:(" + requete + ")"
-all_field = convert_to_http_chars(requete)
-if articles_uniquement:
-    all_field += "&ContentItemType=research-article"
-if sponsorise_ACM:
-    all_field += "&startPage=&SponsorAcronymRaw=acm"
+url = construct_ACM_url(requete, nb_max_results, after_month, after_year, before_month, before_year, sponsorise_ACM, articles_uniquement, http_chars)
+print(requete)
+print(url)
 
-# Soup
-soup = BeautifulSoup(get_page_content(base_url+all_field), 'html.parser')
-formatted_request = soup.title.text
-failed_to_get_nb_results = False
-try:
-    nb_results = int(soup.find('span', {'class': 'hitsLength'}).text.replace(',', ''))
-except:
-    nb_results = -1
-    failed_to_get_nb_results = True
+# récupération du contenu de la page
+page_content = get_page_content(url)
+soup = BeautifulSoup(page_content, 'html.parser')
 
-# On peut également une liste d'informations sur chaque article
-articles_lis = soup.find_all('li', {'class': 'search__item issue-item-container'})
-articles = []
-for article_li in articles_lis:
-    article = {}
-    try:
-        article['title'] = 'https://dl.acm.org'+article_li.find('span', {'class': 'hlFld-Title'}).a['href']
-    except:
-        article['title'] = 'No title'
-    try:
-        article['author1'] = article_li.find('span', {'class': 'hlFld-ContribAuthor'}).a.span.text
-    except:
-        article['author1'] = 'No author'
-    print(f"{article['title']} ===> {article['author1']}")
-    articles.append(article)
-
-# print
-print("-------------------\n")
-print(f"Request: {formatted_request}\n")
-if failed_to_get_nb_results:
-    print("Failed to get the number of results")
-else:
-    print(f"Number of results: {nb_results}")
-print("Number of articles on page: ", len(articles))
-
-# print(soup.prettify())
-# a_tags = soup.find_all('a')
-# for a in a_tags:
-#     print(a.get('href'))
-#     print(a.text)
-#     print('-------------------')
+# récupération des infos générales
+general_infos = get_general_infos(soup)
+display_general_infos(general_infos)
 
 """
 TODO :
@@ -125,7 +139,9 @@ TODO :
     - Lien vers le papier
     - Les mots-clés
     - (références ?)
-2) Adapter le code pour pouvoir faire des requêtes sur d'autres sites (Google Scholar API, etc...)
+2) Adapter le code :
+    - Pour pouvoir faire des requêtes sur d'autres sites (Google Scholar API, etc...)
+    - Empêcher que le même mot soit utilisé plusieurs fois dans la requête
 3) Créer une interface graphique pour entrer les requêtes
 4) Comprendre le doSearch de ACM -> action="/action/doSearch" 
     - select => name="expand" ; option values: ["dl","all"]
