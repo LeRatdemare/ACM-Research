@@ -57,13 +57,6 @@ class Vocabulary:
                 return words
         Exception(f"Il n'y a pas de mot similaire à '{word}' dans le vocabulaire.")
     
-    def is_word(word: str):
-        """
-        :pre: -
-        :return: True si word ne contient pas d'espaces. False sinon.
-        """
-        return " " not in word
-    
     def save(self, path: str):
         """
         :pre: path est un str.
@@ -87,7 +80,14 @@ class Vocabulary:
         return Vocabulary(new_content)
     
     ### STATIC METHODS ###
-
+    
+    def is_word(word: str):
+        """
+        :pre: -
+        :return: True si word ne contient pas d'espaces. False sinon.
+        """
+        return " " not in word
+    
     def load(path: str):
         """
         :pre: path est un str.

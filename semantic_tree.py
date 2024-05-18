@@ -1,6 +1,7 @@
 import random
 from vocabulary import Vocabulary
 from colorama import Fore
+import sympy as sp
 
 
 
@@ -17,7 +18,7 @@ VOCABULARY = INCLUDED_VOCABULARY + EXCLUDED_VOCABULARY
 ### PROBABILITIES ###
 KEEP_SIMILAR_WORD_PROBA = 0.7
 ALTER_STRUCTURE_PROBA = 0.5
-GROW_PROBA = 0.5
+GROW_PROBA = 0.9
 
 
 
@@ -68,21 +69,6 @@ class Node:
             if not child.is_valid():
                 return False
         return True
-    
-    def to_request(self):
-        """
-        :pre: -
-        :return: La représentation de l'arbre correspondant à une requête de navigateur
-        """
-        if self.is_leaf():
-            if Vocabulary.is_word(self.value):
-                return self.value
-            else:
-                return '"' + self.value + '"'
-        if self.is_operation():
-            if self.value == "NOT":
-                return f"NOT {self.children[0].to_request()}"
-            return f"({self.children[0].to_request()} {self.value} {self.children[1].to_request()})"
     
     def alter_value(self):
         """
@@ -170,6 +156,41 @@ class Node:
             if log:
                 print(f"Altered value...")
 
+    def to_request(self):
+        """
+        :pre: -
+        :return: La représentation de l'arbre correspondant à une requête de navigateur
+        """
+        if self.is_leaf():
+            if Vocabulary.is_word(self.value):
+                return self.value
+            else:
+                return '"' + self.value + '"'
+        if self.is_operation():
+            if self.value == "NOT":
+                return f"NOT {self.children[0].to_request()}"
+            return f"({self.children[0].to_request()} {self.value} {self.children[1].to_request()})"
+    
+    def get_sympy_symbols(self) -> dict[str, sp.Symbol]:
+        """
+        :pre: -
+        :return: Un dictionnaire de tous les termes de l'arbre et de leur équivalent en symboles sympy
+        """
+        symbols = {}
+        for node in self.get_all_nodes():
+            if node.is_leaf():
+                symbols[node.value] = sp.symbols(node.value.replace(" ", "_"))
+        return symbols
+
+    def get_simplified_request(self):
+        """
+        :pre: -
+        :return: La requête correspondant à l'arbre, simplifiée
+        """
+        sympy_tree = to_sympy(self)
+        simplified_sympy = sp.to_cnf(sympy_tree, simplify=True, force=True)
+        return sympy_to_request(simplified_sympy)
+    
     def __repr__(self):
         """ Donne une représentation textuelle et visuelle de l'arbre, pour le debugging """
         out = f"{self.value}"
@@ -242,14 +263,17 @@ class RequestTree(Node):
     def apply_alterations(self, nb_alterations=100, log=False):
         for i in range(nb_alterations):
             if log:
-                print("\n\n------------------------------"+Fore.YELLOW+f"Requête {i}"+Fore.RESET+"------------------------------")
+                print("\n\n------------------------------"+Fore.YELLOW+f"Requête {i+1}"+Fore.RESET+"------------------------------")
                 print("Tree before alteration:",end="")
                 print(f"{self}")
             self.alter_random_node(log=log)
             if log:
                 print("Tree after alteration:",end="")
                 print(f"{self}")
-                print("------------------------------"+Fore.YELLOW+f"Requête {i}"+Fore.RESET+"------------------------------")
+                print("------------------------------"+Fore.YELLOW+f"Requête {i+1}"+Fore.RESET+"------------------------------")
+
+    def __str__(self):
+        return self.to_colored_request()
 
 
 
@@ -302,23 +326,76 @@ def unserialize(serialized_repr, vocabulary: Vocabulary) -> Node:
             
     return unserialize_rec(serialized_repr.split(',') , 0)
 
+def to_sympy(node: Node):
+    """
+    :pre: -
+    :return: L'expression sympy correspondant à l'arbre
+    """
+    def to_sympy_rec(node: Node, symbols: dict[str, sp.Symbol]):
+        """
+        :pre: symbols est un dictionnaire de tous les termes de l'arbre et de leur équivalent en symboles sympy
+        :return: L'expression sympy correspondant à l'arbre
+        """
+        if node.is_leaf():
+            return symbols[node.value]
+        if node.is_operation():
+            if node.value == "NOT":
+                return ~to_sympy_rec(node.children[0], symbols)
+            if node.value == "AND":
+                return to_sympy_rec(node.children[0], symbols) & to_sympy_rec(node.children[1], symbols)
+            if node.value == "OR":
+                return to_sympy_rec(node.children[0], symbols) | to_sympy_rec(node.children[1], symbols)
+    symbols = node.get_sympy_symbols()
+    sympy_expr = to_sympy_rec(node, symbols)
+    return sympy_expr
 
+def sympy_to_request(expr: sp.Expr)->str:
+    """
+    :pre: expr est une expression sympy
+    :return: La requête correspondant à l'expression sympy
+    """
+    def sympy_to_request_rec(expr: sp.Expr, symbols: dict[str, sp.Symbol]):
+        """
+        :pre: symbols est un dictionnaire de tous les termes de la requête et de leur équivalent en symboles sympy
+        :return: La requête correspondant à l'expression sympy
+        """
+        if expr.is_Symbol:
+            for symbol in symbols:
+                if symbols[symbol] == expr:
+                    return symbol
+        if isinstance(expr, sp.Not):
+            return f"NOT {sympy_to_request_rec(expr.args[0], symbols)}"
+        if isinstance(expr, sp.And):
+            return "("+' AND '.join(sympy_to_request_rec(arg, symbols) for arg in expr.args)+")"
+        if isinstance(expr, sp.Or):
+            return "("+' OR '.join(sympy_to_request_rec(arg, symbols) for arg in expr.args)+")"
+    symbols = {str(symbol).replace("_", " "): symbol for symbol in expr.free_symbols}
+    return sympy_to_request_rec(expr, symbols)
+    
+    
 
 #################################### TESTS ####################################
 
 
 
-initial_include_tree = Node("collaboration", [], INCLUDED_VOCABULARY)
-initial_exclude_tree = Node("batman", [], EXCLUDED_VOCABULARY)
-request_tree = RequestTree(initial_include_tree, initial_exclude_tree)
+def run_tests():
+    initial_include_tree = Node("collaboration", [], INCLUDED_VOCABULARY)
+    initial_exclude_tree = Node("batman", [], EXCLUDED_VOCABULARY)
+    request_tree = RequestTree(initial_include_tree, initial_exclude_tree)
 
-print(Fore.YELLOW+"\nInitial request:"+Fore.RESET)
-print(request_tree.to_colored_request())
-print(repr(request_tree))
+    print(Fore.YELLOW+"\nInitial request:"+Fore.RESET)
+    print(request_tree.to_colored_request())
+    print(repr(request_tree))
 
-nb_alterations = int(input("\nChoose the number of alterations to apply to the request: "))
-request_tree.apply_alterations(nb_alterations, log=False)
+    nb_alterations = int(input("\nChoose the number of alterations to apply to the request: "))
+    request_tree.apply_alterations(nb_alterations, log=False)
 
-print(Fore.YELLOW+f"\nRequest after {nb_alterations} alterations:"+Fore.RESET)
-print(request_tree.to_colored_request())
-print(repr(request_tree))
+    print(Fore.YELLOW+f"\nRequest after {nb_alterations} alterations:"+Fore.RESET)
+    print(request_tree.to_colored_request())
+    print(repr(request_tree))
+
+    sympy_tree = to_sympy(request_tree)
+    print(f"Représentation sympy: {sympy_tree}")
+    simplified_sympy = sp.to_cnf(sympy_tree, simplify=True, force=True)
+    print(f"\nVersion simplifiée: {simplified_sympy}")
+    print(f"\nRequête correspondante: {sympy_to_request(simplified_sympy)}")

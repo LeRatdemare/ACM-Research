@@ -14,7 +14,7 @@ after_month = 1
 after_year = 2000
 before_month = datetime.datetime.now().month
 before_year = datetime.datetime.now().year
-requete = '((((interactiveness AND asymetric) OR ((interaction OR interactive) OR interactive)) OR (system OR teamwork)) AND (("distance collaboration" AND systems) OR "remote collaboration")) OR NOT (((iron-man AND batman) AND iron-man) AND (batman OR (iron-man AND batman)))'
+requete = '((asym* OR intera* OR mixed OR syst* OR NOT batman OR NOT joker OR NOT villains) AND (asym* OR intera* OR mixed OR syst* OR NOT joker OR NOT thanos OR NOT villains) AND (asym* OR mixed OR syst* OR systems OR NOT batman OR NOT joker OR NOT villains) AND (asym* OR mixed OR syst* OR systems OR NOT joker OR NOT thanos OR NOT villains))'
 nb_max_results_to_display = 5 # Plus ce nombre est grand, plus la requête sera longue à s'exécuter
 ### Attention, la combinaison de ces deux filtres peut fausser les résultats
 sponsorise_ACM = False
@@ -23,6 +23,8 @@ articles_uniquement = False
 
 
 ################################### FUNCTIONS ###################################
+
+
 
 def timer_decorator(func):
     def wrapper(*args, **kwargs):
@@ -109,6 +111,7 @@ def display_general_infos(general_infos: dict):
     print("\n"+general_infos['formatted_request'])
     print(f"Nombre total de résultats: {general_infos['nb_results']}" if general_infos['nb_results'] != -1 else "Nombre de résultats indisponible")
     print(f"Nombre d'articles affichés: {len(general_infos['articles'])}")
+
 
 
 ################################### MAIN ###################################
