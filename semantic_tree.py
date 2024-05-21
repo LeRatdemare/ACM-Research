@@ -418,7 +418,7 @@ def generate_best_request_genetic_algorithm(score_function: Callable[[RequestTre
     def disp_population(population: list[RequestTree]):
         # On affiche entièrement les 2 premières requêtes ainsi que le nombre de nœuds de toutes les autres
 
-        ch = "["+str(population[0])+","+str(population[1])
+        ch = f"[{population[0].get_simplified_request()},{population[1].get_simplified_request()}"
         for i in range(2, len(population)):
             ch += f",{len(population[i].get_all_nodes())}"
         print(ch+"]")

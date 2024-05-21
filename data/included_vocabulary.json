@@ -1,10 +1,22 @@
 {
-  "asymetric": ["asym*", "asymetric", "asymetrical", "mixed"],
+  "asymetric": [
+    "asymmetric",
+    "asymmetrical",
+    "mixed",
+    "different",
+    "dissimilar",
+    "incongruent",
+    "unequal",
+    "unmatched",
+    "heterogeneous",
+    "unsymmetrical",
+    "unsymmetric"
+  ],
   "collaboration": [
     "collaboration",
     "teamwork",
-    "remote collaboration",
-    "distance collaboration"
+    "collaborative",
+    "collaborator"
   ],
   "interaction": [
     "intera*",
@@ -15,5 +27,18 @@
     "interactive",
     "interactiveness"
   ],
-  "system": ["syst*", "system", "systems", "systematic", "systemic"]
+  "system": [
+    "system",
+    "systems",
+    "systematic",
+    "systemic",
+    "device",
+    "prototype"
+  ],
+  "removed": [
+    "remote collaboration",
+    "distance collaboration",
+    "syst*",
+    "asym*"
+  ]
 }

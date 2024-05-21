@@ -2,7 +2,8 @@ import requests
 from bs4 import BeautifulSoup
 import datetime
 import time
-import semantic_tree as st
+import csv
+# import semantic_tree as st
 
 
 
@@ -11,11 +12,13 @@ import semantic_tree as st
 
 
 after_month = 1
-after_year = 2000
+after_year = 1990
 before_month = datetime.datetime.now().month
 before_year = datetime.datetime.now().year
 # requete = '((collaboration OR system) AND interactiveness) AND NOT (((((((batman AND thanos) OR batman) OR villains) OR (((joker OR batman) OR iron-man) OR batman)) OR (iron-man AND joker)) OR (((super-hero AND (thanos AND joker)) OR super-hero) AND (((villains OR (((batman OR iron-man) OR joker) AND (iron-man AND batman))) OR joker) AND (batman AND batman)))) AND joker)'
-requete = '(interactiveness AND NOT joker AND (collaboration OR system))'
+requete = '(collaboration OR teamwork OR collaborative OR collaborator) AND '
+requete += '(asymmetric OR asymmetrical OR mixed OR different OR dissimilar OR incongruent OR unequal OR unmatched OR heterogeneous OR unsymmetrical OR unsymmetric) AND '
+requete += '(device OR prototype OR system)'
 nb_max_results_to_display = 5 # Plus ce nombre est grand, plus la requête sera longue à s'exécuter
 ### Attention, la combinaison de ces deux filtres peut fausser les résultats
 sponsorise_ACM = False
@@ -113,15 +116,22 @@ def display_general_infos(general_infos: dict):
     print(f"Nombre total de résultats: {general_infos['nb_results']}" if general_infos['nb_results'] != -1 else "Nombre de résultats indisponible")
     print(f"Nombre d'articles affichés: {len(general_infos['articles'])}")
 
-def calculate_request_score(request: st.RequestTree) -> int:
-    """
-    Renvoie le score d'une requête
-    """
-    tree_size = len(request)
-    size_diff = len(request.get_include_tree()) - len(request.get_exclude_tree())
-    size_diff_squared = size_diff**2
-    inv_size_diff_squared = 1 / (1 + size_diff_squared) # +1 pour éviter la division par 0
-    return (tree_size) * inv_size_diff_squared
+def save_general_infos(general_infos: dict, path: str):
+    with open(path, 'w', newline='', encoding='utf-8') as file:
+        csv_writer = csv.writer(file)
+        csv_writer.writerow(['Title', 'Author'])
+        for article in general_infos['articles']:
+            csv_writer.writerow([article['title'], article['author1']])
+
+# def calculate_request_score(request: st.RequestTree) -> int:
+#     """
+#     Renvoie le score d'une requête
+#     """
+#     tree_size = len(request)
+#     size_diff = len(request.get_include_tree()) - len(request.get_exclude_tree())
+#     size_diff_squared = size_diff**2
+#     inv_size_diff_squared = 1 / (1 + size_diff_squared) # +1 pour éviter la division par 0
+#     return (tree_size)
 
 
 
@@ -130,23 +140,24 @@ def calculate_request_score(request: st.RequestTree) -> int:
 
 
 # url construction
-# http_chars = {':': '%3A', '(': '%28', ')': '%29', ' ': '+', "'": '%22', }
-# url = construct_ACM_url(requete, nb_max_results_to_display, after_month, after_year, before_month, before_year, sponsorise_ACM, articles_uniquement, http_chars)
-# print(requete)
-# print(url)
+http_chars = {':': '%3A', '(': '%28', ')': '%29', ' ': '+', "'": '%22', }
+url = construct_ACM_url(requete, nb_max_results_to_display, after_month, after_year, before_month, before_year, sponsorise_ACM, articles_uniquement, http_chars)
+print(requete)
+print(url)
 
-# # récupération du contenu de la page
-# page_content = get_page_content(url)
-# soup = BeautifulSoup(page_content, 'html.parser')
+# récupération du contenu de la page
+page_content = get_page_content(url)
+soup = BeautifulSoup(page_content, 'html.parser')
 
-# # récupération des infos générales
-# general_infos = get_general_infos(soup)
-# display_general_infos(general_infos)
+# récupération des infos générales
+general_infos = get_general_infos(soup)
+display_general_infos(general_infos)
+save_general_infos(general_infos, 'articles.csv')
 
-included_node = st.Node("collaboration", [], st.INCLUDED_VOCABULARY)
-excluded_node = st.Node("batman", [], st.EXCLUDED_VOCABULARY)
-initial_request = st.RequestTree(included_node, excluded_node)
-req = st.generate_best_request_genetic_algorithm(calculate_request_score, initial_request, nb_generations=25, population_size=100)
+# included_node = st.Node("collaboration", [], st.INCLUDED_VOCABULARY)
+# excluded_node = st.Node("batman", [], st.EXCLUDED_VOCABULARY)
+# initial_request = st.RequestTree(included_node, excluded_node)
+# req = st.generate_best_request_genetic_algorithm(calculate_request_score, initial_request, nb_generations=25, population_size=100)
 
 """
 TODO :
