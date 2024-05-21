@@ -2,6 +2,7 @@ import random
 from vocabulary import Vocabulary
 from colorama import Fore
 import sympy as sp
+from typing import Callable
 
 
 
@@ -18,7 +19,7 @@ VOCABULARY = INCLUDED_VOCABULARY + EXCLUDED_VOCABULARY
 ### PROBABILITIES ###
 KEEP_SIMILAR_WORD_PROBA = 0.7
 ALTER_STRUCTURE_PROBA = 0.5
-GROW_PROBA = 0.9
+GROW_PROBA = 0.5
 
 
 
@@ -190,7 +191,14 @@ class Node:
         sympy_tree = to_sympy(self)
         simplified_sympy = sp.to_cnf(sympy_tree, simplify=True, force=True)
         return sympy_to_request(simplified_sympy)
-    
+
+    def copy(self):
+        """
+        :pre: -
+        :return: Une copie de l'arbre
+        """
+        return unserialize(serialize(self), self.vocabulary)
+
     def __repr__(self):
         """ Donne une représentation textuelle et visuelle de l'arbre, pour le debugging """
         out = f"{self.value}"
@@ -213,6 +221,12 @@ class Node:
         if not isinstance(other, Node):
             return False
         return self.value == other.value and self.children == other.children
+    
+    def __len__(self):
+        """
+        :return: Le nombre de nœuds de l'arbre
+        """
+        return len(self.get_all_nodes())
 
 class RequestTree(Node):
     """
@@ -222,6 +236,12 @@ class RequestTree(Node):
     def __init__(self, initial_included_node:Node, initial_excluded_node:Node):
         super().__init__("AND", [initial_included_node, Node("NOT", [initial_excluded_node], initial_excluded_node.vocabulary)], initial_included_node.vocabulary + initial_excluded_node.vocabulary)
         # Remarque : Le vocabulaire est de cet arbre n'a pas vraiment d'intérêt
+    
+    def get_include_tree(self):
+        return self.children[0]
+    
+    def get_exclude_tree(self):
+        return self.children[1].children[0]
     
     def alter_random_node(self, structure_proba=ALTER_STRUCTURE_PROBA, log=False):
         """
@@ -271,6 +291,9 @@ class RequestTree(Node):
                 print("Tree after alteration:",end="")
                 print(f"{self}")
                 print("------------------------------"+Fore.YELLOW+f"Requête {i+1}"+Fore.RESET+"------------------------------")
+
+    def copy(self):
+        return RequestTree(self.get_include_tree().copy(), self.get_exclude_tree().copy())
 
     def __str__(self):
         return self.to_colored_request()
@@ -371,8 +394,58 @@ def sympy_to_request(expr: sp.Expr)->str:
             return "("+' OR '.join(sympy_to_request_rec(arg, symbols) for arg in expr.args)+")"
     symbols = {str(symbol).replace("_", " "): symbol for symbol in expr.free_symbols}
     return sympy_to_request_rec(expr, symbols)
+
+def generate_best_request_genetic_algorithm(score_function: Callable[[RequestTree], int], initial_request:RequestTree, nb_generations=100, population_size=100, nb_max_alterations_per_gen=5, nb_max_initial_alterations=10)->RequestTree:
+    """
+    Génère la meilleure requête possible en utilisant un algorithme génétique.
+    :pre: score_function est une fonction qui prend une requête en entrée et renvoie un score
+    :return: La meilleure requête trouvée
+    """
+
+    def generate_population(population_size, initial_request:RequestTree)->list[RequestTree]:
+        population = [initial_request]
+        for _ in range(population_size-1):
+            population.append(initial_request.copy())
+            nb_alterations = random.randint(0, nb_max_initial_alterations)
+            for _ in range(nb_alterations):
+                population[-1].alter_random_node()
+        return population
     
+    def mutate(request:RequestTree)->RequestTree:
+        request.alter_random_node()
+        return request
     
+    def disp_population(population: list[RequestTree]):
+        # On affiche entièrement les 2 premières requêtes ainsi que le nombre de nœuds de toutes les autres
+
+        ch = "["+str(population[0])+","+str(population[1])
+        for i in range(2, len(population)):
+            ch += f",{len(population[i].get_all_nodes())}"
+        print(ch+"]")
+
+    ten_percent = population_size//10
+    population = generate_population(population_size, initial_request)
+    print(f"Initial population:")
+    disp_population(population)
+    for num_generation in range(nb_generations):
+        # On commence par trier la population en utilisant la fonction score
+        population.sort(key=score_function, reverse=True)
+        # Ensuite, on garde les 10% meilleurs
+        population = population[:ten_percent]
+        # On duplique les 10% meilleurs pour retrouver la taille initiale de la population
+        while len(population) < population_size:
+            population.append(population[random.randint(0, ten_percent-1)].copy())
+        # On génère des mutations sur les 90% précédemment créés
+        for i in range(ten_percent, population_size):
+            for _ in range(random.randint(0, nb_max_alterations_per_gen)):
+                population[i] = mutate(population[i])
+        print(f"Generation {num_generation+1}:")
+        disp_population(population)
+    
+    # On retourne la meilleure requête trouvée
+    return max(population, key=score_function)
+
+
 
 #################################### TESTS ####################################
 
