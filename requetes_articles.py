@@ -19,7 +19,8 @@ before_year = datetime.datetime.now().year
 requete = '(collaboration OR teamwork OR collaborative OR collaborator) AND '
 requete += '(asymmetric OR asymmetrical OR mixed OR different OR dissimilar OR incongruent OR unequal OR unmatched OR heterogeneous OR unsymmetrical OR unsymmetric) AND '
 requete += '(device OR prototype OR system)'
-nb_max_results_to_display = 5 # Plus ce nombre est grand, plus la requête sera longue à s'exécuter
+
+nb_max_results_to_display = 500 # Plus ce nombre est grand, plus la requête sera longue à s'exécuter
 ### Attention, la combinaison de ces deux filtres peut fausser les résultats
 sponsorise_ACM = False
 articles_uniquement = False
@@ -40,6 +41,14 @@ def timer_decorator(func):
         return result
     return wrapper
 
+def get_nb_pages(nb_results, nb_results_per_page):
+    return (nb_results // nb_results_per_page) + 1
+
+def get_page_content(url):
+    response = requests.get(url)
+    page_content = response.text
+    return page_content
+
 @timer_decorator
 def get_page_content(url):
     response = requests.get(url)
@@ -57,20 +66,23 @@ def replace_http_chars(string: str, http_chars: dict[str, str]):
         string = string.replace(char, http_chars[char])
     return string
 
-def construct_ACM_url(requete: str, nb_max_results=10, after_month=1, after_year=2000, before_month=datetime.datetime.now().month, before_year=datetime.datetime.now().year, sponsorise_ACM=False, articles_uniquement=False, http_chars: dict[str, str]={}):
+def construct_ACM_url(requete: str, nb_max_results_per_page=10, start_page=0, after_month=1, after_year=2000, before_month=datetime.datetime.now().month, before_year=datetime.datetime.now().year, sponsorise_ACM=False, articles_uniquement=False, http_chars: dict[str, str]={}):
     """ 
     Construit l'url pour faire une requête sur ACM à partir d'une requête ne contenant que les opérateurs AND, OR et NOT.
     
     :pre: requete est une string de la forme "(collaboration OR teamwork) AND (asym* or dissimilar) AND NOT (batman)"
     :return: l'url de la requête get tel qu'il aurait été généré par ACM DL
     """
-    base_url = f"https://dl.acm.org/action/doSearch?pageSize={nb_max_results}&fillQuickSearch=false&target=advanced&expand=dl&AfterMonth={after_month}&AfterYear={after_year}&BeforeMonth={before_month}&BeforeYear={before_year}"
+    base_url = f"https://dl.acm.org/action/doSearch?pageSize={nb_max_results_per_page}&fillQuickSearch=false&target=advanced&expand=dl&AfterMonth={after_month}&AfterYear={after_year}&BeforeMonth={before_month}&BeforeYear={before_year}"
     requete = "Abstract:(" + requete + ")"
     all_field = "&AllField="+replace_http_chars(requete, http_chars)
     if articles_uniquement:
         base_url += "&ContentItemType=research-article"
     if sponsorise_ACM:
-        base_url += "&startPage=&SponsorAcronymRaw=acm"
+        base_url += "&SponsorAcronymRaw=acm"
+    if start_page > 0:
+        base_url += f"&startPage={start_page}"
+    
     return base_url + all_field
 
 ### Récupération des infos avec BeautifulSoup4
@@ -95,15 +107,32 @@ def get_general_infos(soup: BeautifulSoup):
     articles_lis = soup.find_all('li', {'class': 'search__item issue-item-container'})
     articles = []
     for article_li in articles_lis:
+        info_block = article_li.find('div', {'class': 'issue-item__content'})
         article = {}
         try:
-            article['title'] = 'https://dl.acm.org'+article_li.find('span', {'class': 'hlFld-Title'}).a['href']
+            article['doi'] = 'https://dl.acm.org'+article_li.find('span', {'class': 'hlFld-Title'}).a['href']
         except:
-            article['title'] = 'No title'
+            article['doi'] = 'No doi'
         try:
             article['author1'] = article_li.find('span', {'class': 'hlFld-ContribAuthor'}).a.span.text
         except:
             article['author1'] = 'No author'
+        try:
+            article['title'] = info_block.find('a').text
+        except:
+            article['title'] = 'No title'
+        
+        item_detail = info_block.find('div', {'class': 'issue-item__detail'})
+        try:
+            article['publisher'] = item_detail.find('span').text
+        except:
+            article['publisher'] = 'No publisher'
+
+        item_citations = article_li.find('div', {'class': 'issue-item__citation'}).find_all('div')
+        try:
+            article['date'] = item_citations[1].text
+        except:
+            article['date'] = 'No date'
         articles.append(article)
     general_infos['articles'] = articles
 
@@ -111,17 +140,18 @@ def get_general_infos(soup: BeautifulSoup):
 
 def display_general_infos(general_infos: dict):
     for article in general_infos['articles']:
-        print(f"{article['title']} ===> {article['author1']}")
+        print(f"{article['title']} ===> {article['author1']} ===> {article['date']}")
     print("\n"+general_infos['formatted_request'])
     print(f"Nombre total de résultats: {general_infos['nb_results']}" if general_infos['nb_results'] != -1 else "Nombre de résultats indisponible")
     print(f"Nombre d'articles affichés: {len(general_infos['articles'])}")
 
-def save_general_infos(general_infos: dict, path: str):
-    with open(path, 'w', newline='', encoding='utf-8') as file:
+def save_general_infos(general_infos: dict, path: str, mode='w'):
+    with open(path, mode, newline='', encoding='utf-8') as file:
         csv_writer = csv.writer(file)
-        csv_writer.writerow(['Title', 'Author'])
+        if mode == 'w':
+            csv_writer.writerow(['Title', 'Author1', 'Date', 'Publisher', 'DOI'])
         for article in general_infos['articles']:
-            csv_writer.writerow([article['title'], article['author1']])
+            csv_writer.writerow([article['title'], article['author1'], article['date'], article['publisher'], article['doi']])
 
 # def calculate_request_score(request: st.RequestTree) -> int:
 #     """
@@ -141,7 +171,7 @@ def save_general_infos(general_infos: dict, path: str):
 
 # url construction
 http_chars = {':': '%3A', '(': '%28', ')': '%29', ' ': '+', "'": '%22', }
-url = construct_ACM_url(requete, nb_max_results_to_display, after_month, after_year, before_month, before_year, sponsorise_ACM, articles_uniquement, http_chars)
+url = construct_ACM_url(requete=requete, nb_max_results_per_page=1, after_month=after_month, after_year=after_year, before_month=before_month, before_year=before_year, sponsorise_ACM=sponsorise_ACM, articles_uniquement=articles_uniquement, http_chars=http_chars)
 print(requete)
 print(url)
 
@@ -152,7 +182,16 @@ soup = BeautifulSoup(page_content, 'html.parser')
 # récupération des infos générales
 general_infos = get_general_infos(soup)
 display_general_infos(general_infos)
-save_general_infos(general_infos, 'articles.csv')
+# save_general_infos(general_infos, 'articles.csv')
+
+for i in range(4, get_nb_pages(general_infos['nb_results'], nb_max_results_to_display)):
+    url = construct_ACM_url(requete=requete, nb_max_results_per_page=nb_max_results_to_display, start_page=i, after_month=after_month, after_year=after_year, before_month=before_month, before_year=before_year, sponsorise_ACM=sponsorise_ACM, articles_uniquement=articles_uniquement, http_chars=http_chars)
+    print(url)
+    page_content = get_page_content(url)
+    soup = BeautifulSoup(page_content, 'html.parser')
+    general_infos = get_general_infos(soup)
+    display_general_infos(general_infos)
+    save_general_infos(general_infos, 'articles.csv', 'a')
 
 # included_node = st.Node("collaboration", [], st.INCLUDED_VOCABULARY)
 # excluded_node = st.Node("batman", [], st.EXCLUDED_VOCABULARY)
