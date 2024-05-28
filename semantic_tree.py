@@ -472,3 +472,5 @@ def run_tests():
     simplified_sympy = sp.to_cnf(sympy_tree, simplify=True, force=True)
     print(f"\nVersion simplifiée: {simplified_sympy}")
     print(f"\nRequête correspondante: {sympy_to_request(simplified_sympy)}")
+
+# run_tests()

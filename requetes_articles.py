@@ -3,6 +3,8 @@ from bs4 import BeautifulSoup
 import datetime
 import time
 import csv
+from time import sleep
+
 # import semantic_tree as st
 
 
@@ -20,7 +22,7 @@ requete = '(collaboration OR teamwork OR collaborative OR collaborator) AND '
 requete += '(asymmetric OR asymmetrical OR mixed OR different OR dissimilar OR incongruent OR unequal OR unmatched OR heterogeneous OR unsymmetrical OR unsymmetric) AND '
 requete += '(device OR prototype OR system)'
 
-nb_max_results_to_display = 500 # Plus ce nombre est grand, plus la requête sera longue à s'exécuter
+nb_max_results_to_display = 20 # Plus ce nombre est grand, plus la requête sera longue à s'exécuter
 ### Attention, la combinaison de ces deux filtres peut fausser les résultats
 sponsorise_ACM = False
 articles_uniquement = False
@@ -133,6 +135,11 @@ def get_general_infos(soup: BeautifulSoup):
             article['date'] = item_citations[1].text
         except:
             article['date'] = 'No date'
+        try:
+            article['type'] = item_citations[0].text
+        except:
+            article['type'] = 'No date'
+
         articles.append(article)
     general_infos['articles'] = articles
 
@@ -151,7 +158,7 @@ def save_general_infos(general_infos: dict, path: str, mode='w'):
         if mode == 'w':
             csv_writer.writerow(['Title', 'Author1', 'Date', 'Publisher', 'DOI'])
         for article in general_infos['articles']:
-            csv_writer.writerow([article['title'], article['author1'], article['date'], article['publisher'], article['doi']])
+            csv_writer.writerow([article['title'], article['author1'], article['date'], article['publisher'], article['doi'], article['type']])
 
 # def calculate_request_score(request: st.RequestTree) -> int:
 #     """
@@ -171,7 +178,7 @@ def save_general_infos(general_infos: dict, path: str, mode='w'):
 
 # url construction
 http_chars = {':': '%3A', '(': '%28', ')': '%29', ' ': '+', "'": '%22', }
-url = construct_ACM_url(requete=requete, nb_max_results_per_page=1, after_month=after_month, after_year=after_year, before_month=before_month, before_year=before_year, sponsorise_ACM=sponsorise_ACM, articles_uniquement=articles_uniquement, http_chars=http_chars)
+url = construct_ACM_url(requete=requete, nb_max_results_per_page=nb_max_results_to_display, after_month=after_month, after_year=after_year, before_month=before_month, before_year=before_year, sponsorise_ACM=sponsorise_ACM, articles_uniquement=articles_uniquement, http_chars=http_chars)
 print(requete)
 print(url)
 
@@ -182,16 +189,17 @@ soup = BeautifulSoup(page_content, 'html.parser')
 # récupération des infos générales
 general_infos = get_general_infos(soup)
 display_general_infos(general_infos)
-# save_general_infos(general_infos, 'articles.csv')
+save_general_infos(general_infos, 'articles2.csv', mode='w')
 
-for i in range(4, get_nb_pages(general_infos['nb_results'], nb_max_results_to_display)):
+for i in range(1, get_nb_pages(general_infos['nb_results'], nb_max_results_to_display)):
     url = construct_ACM_url(requete=requete, nb_max_results_per_page=nb_max_results_to_display, start_page=i, after_month=after_month, after_year=after_year, before_month=before_month, before_year=before_year, sponsorise_ACM=sponsorise_ACM, articles_uniquement=articles_uniquement, http_chars=http_chars)
     print(url)
     page_content = get_page_content(url)
     soup = BeautifulSoup(page_content, 'html.parser')
     general_infos = get_general_infos(soup)
     display_general_infos(general_infos)
-    save_general_infos(general_infos, 'articles.csv', 'a')
+    save_general_infos(general_infos, 'articles2.csv', 'a')
+    sleep(30)
 
 # included_node = st.Node("collaboration", [], st.INCLUDED_VOCABULARY)
 # excluded_node = st.Node("batman", [], st.EXCLUDED_VOCABULARY)

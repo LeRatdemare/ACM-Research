@@ -1,5 +1,5 @@
 {
-  "asymetric": [
+  "asymmetric": [
     "asymmetric",
     "asymmetrical",
     "mixed",
@@ -36,6 +36,7 @@
     "prototype"
   ],
   "removed": [
+    "removed",
     "remote collaboration",
     "distance collaboration",
     "syst*",
